@@ -1,0 +1,13 @@
+.env
+agent_app/.env
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+dist/
+*.sqlite3
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+~*.twbr
+* - 副本.csv
