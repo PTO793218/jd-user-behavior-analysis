@@ -1,8 +1,8 @@
 # 数据字典
 
-## 主行为数据：jd_analysis_final.csv
+## 主行为数据：data/processed/jd_analysis_final.csv
 
-`jd_analysis_final.csv` 是当前 Agent 的主数据源，包含清洗后的京东用户行为明细。每一行代表一次用户行为记录。
+`data/processed/jd_analysis_final.csv` 是当前 Agent 的主数据源，包含清洗后的京东用户行为明细。每一行代表一次用户行为记录。
 
 | 字段 | 含义 | 说明 |
 | --- | --- | --- |
@@ -32,9 +32,9 @@
 | `fav` | 收藏 | 用户收藏商品，代表延迟购买或关注意向。 |
 | `buy` | 购买 | 用户完成购买，是最终转化行为。 |
 
-## RFM 结果数据：jd_rfm_result.csv
+## RFM 结果数据：data/processed/jd_rfm_result.csv
 
-`jd_rfm_result.csv` 是购买用户的 RFM 分层结果，当前共有 6,108 名用户。
+`data/processed/jd_rfm_result.csv` 是购买用户的 RFM 分层结果，当前共有 6,108 名用户。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -59,9 +59,9 @@
 - 高消费沉睡用户：296 人。
 - 高消费流失预警用户：196 人。
 
-## 评论语义结果：comment_semantic_result.csv
+## 评论语义结果：data/processed/comment_semantic_result.csv
 
-`comment_semantic_result.csv` 是评论语义分析明细结果。当前已完成 960 条去重评论样本分析。
+`data/processed/comment_semantic_result.csv` 是评论语义分析明细结果。当前已完成 960 条去重评论样本分析。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -74,9 +74,9 @@
 | `model` | 使用的大模型名称。 |
 | `analyzed_at` | 分析时间。 |
 
-## 评论语义汇总：semantic_summary.csv
+## 评论语义汇总：data/processed/semantic_summary.csv
 
-`semantic_summary.csv` 是评论语义分析聚合结果。
+`data/processed/semantic_summary.csv` 是评论语义分析聚合结果。
 
 | 字段 | 含义 |
 | --- | --- |

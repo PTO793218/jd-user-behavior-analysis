@@ -78,7 +78,7 @@
 
 ## 数据口径
 
-主数据文件为 `jd_analysis_final.csv`，当前数据范围：
+主数据文件为 `data/processed/jd_analysis_final.csv`，当前数据范围：
 
 ```text
 行为记录数：757,554
@@ -165,6 +165,16 @@ knowledge_base/             RAG 本地知识库
   operation_strategy.md
 
 assets/                     README 截图
+
+data/                       数据文件
+  raw/                      原始数据
+  processed/                清洗后数据、分析结果和语义汇总
+
+notebooks/                  Jupyter 分析过程
+
+docs/                       项目说明、设计文档和 Word 文档
+
+reports/visualizations/     Tableau 等可视化产物
 ```
 
 ## V4 工作台运行方式
@@ -290,12 +300,12 @@ python agent_app\semantic_analysis.py --batch-size 20
 
 脚本流程：
 
-1. 从 `jd_analysis_final.csv` 读取 `comment` 字段。
+1. 从 `data/processed/jd_analysis_final.csv` 读取 `comment` 字段。
 2. 过滤空评论、“无评论”、“暂无评论”、“默认好评”等无效文本。
 3. 对有效评论去重，并使用 `comment_hash` 作为缓存键。
 4. 分批调用 DeepSeek/OpenAI-compatible API。
-5. 将明细写入 `comment_semantic_result.csv`。
-6. 将聚合统计写入 `semantic_summary.csv`。
+5. 将明细写入 `data/processed/comment_semantic_result.csv`。
+6. 将聚合统计写入 `data/processed/semantic_summary.csv`。
 7. 再次运行时自动跳过已处理评论，支持断点续跑。
 
 字段口径：
@@ -378,9 +388,9 @@ frontend/package.json
 frontend/package-lock.json
 knowledge_base/
 assets/
-README_agent.md
-comment_semantic_result.csv
-semantic_summary.csv
+docs/README_agent.md
+data/processed/comment_semantic_result.csv
+data/processed/semantic_summary.csv
 ```
 
 ## 项目亮点
@@ -394,7 +404,7 @@ semantic_summary.csv
 - 增加 PDF 导出：在现有 Markdown 报告基础上继续支持 PDF 报告导出。
 ## 第五版：可解释 Agent 与自动分析报告
 
-第五版在现有 React + FastAPI 工作台基础上增量增强，运行方式不变，仍然保留 Streamlit 版本，不覆盖 `agent_app/.env`，不重新清洗 CSV，不重新运行评论语义分析，也不改动 `comment_semantic_result.csv` 和 `semantic_summary.csv`。
+第五版在现有 React + FastAPI 工作台基础上增量增强，运行方式不变，仍然保留 Streamlit 版本，不覆盖 `agent_app/.env`，不重新清洗 CSV，不重新运行评论语义分析，也不改动 `data/processed/comment_semantic_result.csv` 和 `data/processed/semantic_summary.csv`。
 
 新增能力：
 

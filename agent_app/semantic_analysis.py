@@ -12,9 +12,9 @@ import pandas as pd
 import requests
 
 try:
-    from .data_loader import PROJECT_ROOT, load_llm_config
+    from .data_loader import PROCESSED_DATA_DIR, load_llm_config
 except ImportError:  # pragma: no cover - direct script execution
-    from data_loader import PROJECT_ROOT, load_llm_config
+    from data_loader import PROCESSED_DATA_DIR, load_llm_config
 
 
 ASPECT_LABELS = ["质量", "物流", "价格", "服务", "包装", "售后", "体验"]
@@ -51,9 +51,9 @@ INVALID_COMMENTS = {
     "nan",
 }
 
-DEFAULT_BEHAVIOR_CSV = PROJECT_ROOT / "jd_analysis_final.csv"
-DEFAULT_DETAIL_CSV = PROJECT_ROOT / "comment_semantic_result.csv"
-DEFAULT_SUMMARY_CSV = PROJECT_ROOT / "semantic_summary.csv"
+DEFAULT_BEHAVIOR_CSV = PROCESSED_DATA_DIR / "jd_analysis_final.csv"
+DEFAULT_DETAIL_CSV = PROCESSED_DATA_DIR / "comment_semantic_result.csv"
+DEFAULT_SUMMARY_CSV = PROCESSED_DATA_DIR / "semantic_summary.csv"
 
 
 def normalize_comment_text(value: Any) -> str:

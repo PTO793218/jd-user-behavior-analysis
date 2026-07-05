@@ -10,4 +10,6 @@ dist/
 frontend/vite.config.js
 frontend/vite.config.d.ts
 ~*.twbr
+*.twbr
 * - 副本.csv
+data/processed/clean_jd_data.csv

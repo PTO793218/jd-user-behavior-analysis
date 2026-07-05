@@ -11,13 +11,16 @@ import pandas as pd
 
 APP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = APP_DIR.parent
+DATA_DIR = PROJECT_ROOT / "data"
+RAW_DATA_DIR = DATA_DIR / "raw"
+PROCESSED_DATA_DIR = DATA_DIR / "processed"
 
 
 @dataclass(frozen=True)
 class DataPaths:
-    behavior_csv: Path = PROJECT_ROOT / "jd_analysis_final.csv"
-    rfm_csv: Path = PROJECT_ROOT / "jd_rfm_result.csv"
-    comment_csv: Path = PROJECT_ROOT / "comment_word_freq.csv"
+    behavior_csv: Path = PROCESSED_DATA_DIR / "jd_analysis_final.csv"
+    rfm_csv: Path = PROCESSED_DATA_DIR / "jd_rfm_result.csv"
+    comment_csv: Path = PROCESSED_DATA_DIR / "comment_word_freq.csv"
 
 
 @dataclass

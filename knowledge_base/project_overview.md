@@ -8,7 +8,7 @@ Agent 的核心意义是降低业务分析门槛。运营人员不需要直接�
 
 ## 数据范围
 
-当前主分析数据来自 `jd_analysis_final.csv`，覆盖时间为 2024-05-29 至 2024-06-04。
+当前主分析数据来自 `data/processed/jd_analysis_final.csv`，覆盖时间为 2024-05-29 至 2024-06-04。
 
 核心规模如下：
 
@@ -29,7 +29,7 @@ Agent 的核心意义是降低业务分析门槛。运营人员不需要直接�
 
 第一版实现了结构化数据问数能力。系统将数据概览、行为漏斗、RFM 分层、时段趋势、地区销售、设备转化和评论关键词封装为固定工具函数，用户提问后由 Agent 选择工具并生成回答。
 
-第二版新增评论语义级分析能力。系统在 API 预算限制下，对 960 条去重评论样本调用 DeepSeek/OpenAI-compatible API，生成情感分类、情感分数、方面标签和负面原因归因，并保存为 `comment_semantic_result.csv` 和 `semantic_summary.csv`。
+第二版新增评论语义级分析能力。系统在 API 预算限制下，对 960 条去重评论样本调用 DeepSeek/OpenAI-compatible API，生成情感分类、情感分数、方面标签和负面原因归因，并保存为 `data/processed/comment_semantic_result.csv` 和 `data/processed/semantic_summary.csv`。
 
 第三版计划新增 RAG 能力。RAG 不用于查询 75 万行行为数据，而用于回答项目背景、字段含义、指标定义、语义分析口径和运营策略等知识型问题。
 

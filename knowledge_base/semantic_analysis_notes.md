@@ -10,12 +10,12 @@
 
 评论语义分析由离线脚本 `agent_app/semantic_analysis.py` 完成。流程如下：
 
-1. 从 `jd_analysis_final.csv` 读取 `comment` 字段。
+1. 从 `data/processed/jd_analysis_final.csv` 读取 `comment` 字段。
 2. 清理空评论、“无评论”、“暂无评论”、“默认好评”等无效文本。
 3. 对有效评论去重，生成 `comment_hash`。
 4. 分批调用 DeepSeek/OpenAI-compatible API。
-5. 输出逐条明细到 `comment_semantic_result.csv`。
-6. 输出聚合统计到 `semantic_summary.csv`。
+5. 输出逐条明细到 `data/processed/comment_semantic_result.csv`。
+6. 输出聚合统计到 `data/processed/semantic_summary.csv`。
 7. 再次运行时跳过已处理的 `comment_hash`，支持断点续跑。
 
 ## 当前样本口径
