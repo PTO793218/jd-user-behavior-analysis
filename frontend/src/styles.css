@@ -9,13 +9,26 @@
 body {
   margin: 0;
   font-family:
-    Inter, "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
-  color: #0f172a;
+    "Source Han Sans SC", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+  color: #111827;
+  background:
+    linear-gradient(90deg, rgba(17, 24, 39, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(17, 24, 39, 0.03) 1px, transparent 1px),
+    #f5f1e8;
+  background-size: 32px 32px;
 }
 
 button,
 textarea {
   font: inherit;
+}
+
+::selection {
+  background: rgba(28, 116, 121, 0.18);
+}
+
+* {
+  scrollbar-color: rgba(31, 77, 82, 0.45) transparent;
 }
 
 .line-clamp-4 {

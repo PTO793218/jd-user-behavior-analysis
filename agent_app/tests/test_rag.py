@@ -100,4 +100,6 @@ def test_agent_can_answer_with_rag_without_breaking_data_tools():
 
     assert "rag" in result["tool_names"]
     assert "rag" in result["tool_results"]
-    assert "知识库依据" in result["answer"]
+    assert result["used_llm"] is False
+    assert "当前模型不可用" in result["answer"]
+    assert result["tool_results"]["rag"]["status"] in {"ready", "missing"}

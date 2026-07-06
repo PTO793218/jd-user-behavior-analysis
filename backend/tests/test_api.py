@@ -31,11 +31,60 @@ def fake_agent_runner(question: str, context: list[dict[str, str]] | None = None
                 }
             ],
         }
+    if "购买路径" in question:
+        tool_results["user_path_analysis"] = {
+            "summary": {
+                "path_instances": 4,
+                "converted_paths": 2,
+                "path_conversion_rate": 0.5,
+                "direct_pv_buy_users": 1,
+            },
+            "path_table": [{"path": "浏览 > 购买", "path_count": 1, "conversion_rate": 1.0}],
+            "dropoff_table": [{"name": "加购", "dropoff_count": 2, "dropoff_rate": 0.5}],
+            "scope_note": "结构化全量行为数据口径。",
+        }
+    if "未来 24 小时" in question:
+        tool_results["sales_forecast"] = {
+            "method": "linear_regression_baseline",
+            "actual_tail": [{"time": "2024-05-01 10:00:00", "sales": 10.0}],
+            "forecast": [{"forecast_time": "2024-05-01 11:00:00", "predicted_sales": 12.0}],
+            "summary": {"trend": "上升", "next_24h_predicted_sales": 288.0},
+            "scope_note": "短期趋势辅助判断。",
+        }
+    if "实验方案" in question:
+        tool_results["ab_test_plan"] = {
+            "status": "proposal",
+            "experiment_goal": "降低浏览到加购流失",
+            "baseline": {"pv": 100, "cart": 10, "pv_to_cart_rate": 0.1},
+            "hypothesis": "强化卖点提升加购。",
+            "groups": [{"group": "A 组", "design": "对照"}, {"group": "B 组", "design": "实验"}],
+            "metrics": [{"name": "浏览到加购转化率", "role": "核心指标"}],
+            "limit_note": "实验尚未执行。",
+        }
     return {
         "answer": "结论：测试回答\n数据依据：来自固定工具\n原因分析：测试原因\n运营建议：测试建议",
         "tool_names": list(tool_results.keys()),
         "tool_results": tool_results,
         "used_llm": False,
+        "tool_plan": {
+            "tools": list(tool_results.keys()),
+            "reason": "test planner",
+            "answer_intent": "overview",
+            "used_llm": False,
+        },
+        "evidence_summary": [
+            {"label": "records", "value": 10, "source": "data_overview", "note": "test evidence"}
+        ],
+        "agent_trace": {
+            "intent": "overview",
+            "planned_tools": list(tool_results.keys()),
+            "planning_reason": "test planner",
+            "planning_used_llm": False,
+            "model_status": "test",
+            "evidence_summary": [
+                {"label": "records", "value": 10, "source": "data_overview", "note": "test evidence"}
+            ],
+        },
         "error": "",
     }
 
@@ -50,6 +99,8 @@ def test_health(tmp_path):
     response = client(tmp_path).get("/api/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert "model" in response.json()
+    assert "configured" in response.json()["model"]
 
 
 def test_session_lifecycle(tmp_path):
@@ -82,6 +133,8 @@ def test_chat_persists_messages_and_tool_calls(tmp_path):
     payload = chat.json()
     assert payload["session_id"] == session_id
     assert payload["tools"][0]["name"] == "data_overview"
+    assert payload["agent_trace"]["planned_tools"] == ["data_overview"]
+    assert payload["agent_trace"]["evidence_summary"][0]["source"] == "data_overview"
 
     detail = api.get(f"/api/sessions/{session_id}").json()
     assert [message["role"] for message in detail["messages"]] == ["user", "assistant"]
@@ -106,6 +159,7 @@ def test_overview_shape(tmp_path):
     assert response.status_code == 200
     payload = response.json()
     assert {"records", "users", "goods", "rfm_users", "semantic_sample_count"}.issubset(payload)
+    assert "model_status" in payload
 
 
 def test_chat_returns_routing_explanation_confidence_and_visual_payloads(tmp_path):
@@ -119,6 +173,27 @@ def test_chat_returns_routing_explanation_confidence_and_visual_payloads(tmp_pat
     assert payload["confidence"]["level"] in {"高", "中", "低"}
     assert payload["confidence"]["reason"]
     assert any(item["tool_name"] == "data_overview" for item in payload["visual_payloads"])
+
+
+def test_chat_returns_v6_visual_payloads(tmp_path):
+    api = client(tmp_path)
+
+    path_response = api.post("/api/chat", json={"question": "用户最常见的购买路径是什么？"})
+    assert path_response.status_code == 200
+    path_payload = path_response.json()
+    assert any(tool["name"] == "user_path_analysis" for tool in path_payload["tools"])
+    assert any(item["tool_name"] == "user_path_analysis" and item["type"] == "table" for item in path_payload["visual_payloads"])
+    assert "购买路径" in path_payload["routing_explanation"]
+
+    forecast_response = api.post("/api/chat", json={"question": "未来 24 小时销售额趋势如何？"})
+    assert forecast_response.status_code == 200
+    forecast_payload = forecast_response.json()
+    assert any(item["tool_name"] == "sales_forecast" and item["type"] == "line" for item in forecast_payload["visual_payloads"])
+
+    plan_response = api.post("/api/chat", json={"question": "针对浏览到加购流失高设计一个 A/B 测试实验方案"})
+    assert plan_response.status_code == 200
+    plan_payload = plan_response.json()
+    assert any(item["tool_name"] == "ab_test_plan" and item["type"] == "plan" for item in plan_payload["visual_payloads"])
 
 
 def test_followup_uses_recent_context_and_tool_results(tmp_path):
@@ -163,7 +238,7 @@ def test_report_generation_uses_session_messages_tools_and_sources(tmp_path):
 
     assert response.status_code == 200
     markdown = response.json()["report_markdown"]
-    for heading in ["# 京东用户行为分析报告", "## 分析问题", "## 关键结论", "## 数据依据", "## RAG/知识库依据", "## 运营建议", "## 风险与限制"]:
+    for heading in ["# 京东用户行为分析报告", "## 分析问题", "## 关键结论", "## Agent 工具链路", "## 关键证据摘要", "## 数据依据", "## RAG/知识库依据", "## 运营建议", "## 风险与限制"]:
         assert heading in markdown
     assert "metric_definitions.md" in markdown
 

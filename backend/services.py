@@ -13,8 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent_app.agent import answer_question  # noqa: E402
-from agent_app.data_loader import load_data  # noqa: E402
+from agent_app.agent import answer_question, summarize_tool_results  # noqa: E402
+from agent_app.data_loader import load_data, load_llm_config  # noqa: E402
 from agent_app.metrics import (  # noqa: E402
     get_behavior_funnel,
     get_comment_semantic_summary,
@@ -50,6 +50,13 @@ EXPLICIT_TOPIC_KEYWORDS = [
     "小时",
     "时间",
     "趋势",
+    "路径",
+    "矩阵",
+    "价格带",
+    "预测",
+    "实验",
+    "A/B",
+    "ab",
 ]
 
 
@@ -90,6 +97,19 @@ def semantic_sample_count() -> int:
     return 0
 
 
+def model_status_payload() -> dict[str, Any]:
+    config = load_llm_config()
+    api_key = str(config.get("api_key") or "").strip()
+    configured = bool(api_key and "your_" not in api_key.lower() and "api_key_here" not in api_key.lower())
+    return {
+        "configured": configured,
+        "status": "connected" if configured else "missing_key",
+        "model": config.get("model") or "",
+        "base_url": config.get("base_url") or "",
+        "provider": config.get("provider") or "OpenAI-compatible",
+    }
+
+
 def get_overview_payload() -> dict[str, Any]:
     bundle = load_data()
     overview = _jsonable(get_data_overview(bundle.behavior, bundle.rfm, bundle.comments))
@@ -99,6 +119,7 @@ def get_overview_payload() -> dict[str, Any]:
 
     overview["semantic_sample_count"] = semantic_sample_count()
     overview["semantic_scope_note"] = SEMANTIC_SCOPE_NOTE
+    overview["model_status"] = model_status_payload()
     overview["charts"] = {
         "behavior_funnel": funnel,
         "daily_trend": daily,
@@ -181,12 +202,18 @@ def routing_explanation(question: str, tool_names: list[str], context_summary: s
         add("问题涉及概览、总体规模、多少、摘要或报告，因此调用 data_overview。")
     if "behavior_funnel" in tool_names:
         add("问题涉及漏斗、转化、流失、浏览高购买少，因此调用 behavior_funnel。")
+    if "user_path_analysis" in tool_names:
+        add("问题涉及购买路径、直接购买或路径流失，因此调用 user_path_analysis。")
     if "rfm_summary" in tool_names:
         add("问题涉及 RFM、用户分层、价值用户、召回或留存，因此调用 rfm_summary。")
+    if "rfm_behavior_differences" in tool_names:
+        add("问题涉及不同 RFM 用户层的行为差异、类目偏好或价格带偏好，因此调用 rfm_behavior_differences。")
     if "hourly_trend" in tool_names:
         add("问题涉及时间、小时、高峰、活动或促销时段，因此调用 hourly_trend。")
     if "daily_trend" in tool_names:
         add("问题涉及日期、每日或趋势变化，因此调用 daily_trend。")
+    if "sales_forecast" in tool_names:
+        add("问题涉及未来 24 小时、销售额预测或上升下降判断，因此调用 sales_forecast。")
     if "area_summary" in tool_names:
         add("问题涉及地区、城市、区域或销售额，因此调用 area_summary。")
     if "device_conversion" in tool_names:
@@ -195,8 +222,16 @@ def routing_explanation(question: str, tool_names: list[str], context_summary: s
         add("问题涉及评论、评价、关键词或用户关注点，因此调用 comment_keywords。")
     if "comment_semantic" in tool_names:
         add("问题命中负面、不满意、差评、情感、方面、质量、物流、价格、服务、包装、售后或体验，因此调用 comment_semantic。")
+    if "semantic_linkage" in tool_names:
+        add("问题涉及评论语义问题在商品或类目维度的集中情况，因此调用 semantic_linkage。")
     if "top_categories" in tool_names:
         add("问题涉及品类、类目或商品类别，因此调用 top_categories。")
+    if "operation_matrix" in tool_names:
+        add("问题涉及高流量低转化、加大曝光、详情页优化或运营矩阵，因此调用 operation_matrix。")
+    if "price_band_analysis" in tool_names:
+        add("问题涉及价格带、客单价或不同价格区间转化，因此调用 price_band_analysis。")
+    if "ab_test_plan" in tool_names:
+        add("问题涉及 A/B 测试、实验方案或运营实验设计，因此调用 ab_test_plan。")
     if "rag" in tool_names:
         add("问题命中 RFM、定义、含义、口径、字段、为什么、样本、范围或运营策略，因此调用 rag 检索项目知识库。")
     if context_summary and is_followup_question(question):
@@ -222,6 +257,15 @@ def confidence_for_result(
 
     if any(name == "comment_semantic" for name in tool_names):
         return {"level": "中", "reason": f"结论基于已生成的 960 条去重评论语义样本，适合发现方向但不是全量评论统计{error_note}。"}
+
+    if any(name == "semantic_linkage" for name in tool_names):
+        return {"level": "中", "reason": f"评论联动基于 960 条去重评论语义样本，并只关联能匹配到行为记录的评论，适合发现方向但不是全量评论统计{error_note}。"}
+
+    if any(name == "sales_forecast" for name in tool_names):
+        return {"level": "中", "reason": f"销售额预测使用短周期小时级历史数据和简单基线模型，只适合短期趋势辅助判断{error_note}。"}
+
+    if any(name == "ab_test_plan" for name in tool_names):
+        return {"level": "中", "reason": f"A/B 测试内容是基于历史诊断生成的实验方案，不代表已经执行或得到线上实验结论{error_note}。"}
 
     if any(name == "rag" for name in tool_names):
         structured = [name for name in tool_names if name != "rag"]
@@ -298,6 +342,139 @@ def visual_payloads_for_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any
                     "y_key": "records",
                 }
             )
+        elif name == "user_path_analysis" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "table",
+                    "title": "用户购买路径",
+                    "data": result.get("path_table") or [],
+                    "columns": [
+                        {"key": "path", "label": "路径"},
+                        {"key": "path_count", "label": "次数"},
+                        {"key": "users", "label": "用户数"},
+                        {"key": "conversion_rate", "label": "转化率"},
+                    ],
+                }
+            )
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "table",
+                    "title": "关键流失路径",
+                    "data": result.get("dropoff_table") or [],
+                    "columns": [
+                        {"key": "name", "label": "流失停留行为"},
+                        {"key": "dropoff_count", "label": "流失路径数"},
+                        {"key": "dropoff_rate", "label": "占比"},
+                    ],
+                }
+            )
+        elif name == "operation_matrix" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "matrix",
+                    "title": "类目/商品运营矩阵",
+                    "data": result.get("matrix_table") or [],
+                    "columns": [
+                        {"key": result.get("dimension") or "category_id", "label": "对象"},
+                        {"key": "pv", "label": "PV"},
+                        {"key": "buys", "label": "购买"},
+                        {"key": "conversion_rate", "label": "转化率"},
+                        {"key": "quadrant", "label": "象限"},
+                        {"key": "suggestion", "label": "建议"},
+                    ],
+                }
+            )
+        elif name == "semantic_linkage" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "table",
+                    "title": "评论语义问题分布",
+                    "data": result.get("aspect_table") or [],
+                    "columns": [
+                        {"key": "aspect", "label": "问题方面"},
+                        {"key": "count", "label": "样本数"},
+                        {"key": "negative_count", "label": "负面数"},
+                        {"key": "negative_rate", "label": "负面率"},
+                    ],
+                }
+            )
+        elif name == "rfm_behavior_differences" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "table",
+                    "title": "RFM 分层行为差异",
+                    "data": result.get("layer_table") or [],
+                    "columns": [
+                        {"key": "label", "label": "用户层"},
+                        {"key": "users", "label": "用户数"},
+                        {"key": "cart_rate", "label": "加购率"},
+                        {"key": "purchase_rate", "label": "购买率"},
+                        {"key": "avg_price", "label": "均价"},
+                    ],
+                }
+            )
+        elif name == "price_band_analysis" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "bar",
+                    "title": "价格带转化率",
+                    "data": result.get("chart_data") or [],
+                    "x_key": "price_band",
+                    "y_key": "conversion_rate",
+                }
+            )
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "table",
+                    "title": "价格带明细",
+                    "data": result.get("band_table") or [],
+                    "columns": [
+                        {"key": "price_band", "label": "价格带"},
+                        {"key": "pv", "label": "浏览"},
+                        {"key": "buys", "label": "购买"},
+                        {"key": "sales", "label": "销售额"},
+                        {"key": "conversion_rate", "label": "转化率"},
+                    ],
+                }
+            )
+        elif name == "sales_forecast" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "line",
+                    "title": "未来 24 小时销售额预测",
+                    "data": result.get("forecast") or [],
+                    "x_key": "forecast_time",
+                    "y_key": "predicted_sales",
+                }
+            )
+        elif name == "ab_test_plan" and isinstance(result, dict):
+            payloads.append(
+                {
+                    "tool_name": name,
+                    "type": "plan",
+                    "title": "A/B 测试方案摘要",
+                    "data": [
+                        {
+                            "experiment_goal": result.get("experiment_goal"),
+                            "hypothesis": result.get("hypothesis"),
+                            "groups": result.get("groups") or [],
+                            "metrics": result.get("metrics") or [],
+                            "traffic_split": result.get("traffic_split"),
+                            "observation_period": result.get("observation_period"),
+                            "success_criteria": result.get("success_criteria"),
+                            "limit_note": result.get("limit_note"),
+                        }
+                    ],
+                }
+            )
         elif name == "comment_semantic" and isinstance(result, dict):
             sentiment = result.get("sentiment_summary")
             aspect = result.get("aspect_summary")
@@ -350,12 +527,32 @@ def normalize_agent_result(raw: dict[str, Any], context_summary: str = "") -> di
         rag_sources = _jsonable(rag_result.get("sources") or [])
 
     answer = str(raw.get("answer") or "")
-    if "comment_semantic" in tool_names and "960" not in answer:
+    if ("comment_semantic" in tool_names or "semantic_linkage" in tool_names) and "960" not in answer:
         answer = f"{answer}\n\n注意：{SEMANTIC_SCOPE_NOTE}"
 
     routing = routing_explanation(str(raw.get("question") or ""), tool_names, context_summary=context_summary)
+    tool_plan = raw.get("tool_plan")
+    if isinstance(tool_plan, dict) and tool_plan.get("reason"):
+        prefix = "- 模型工具规划：" if tool_plan.get("used_llm") else "- 保底工具规划："
+        routing = f"{prefix}{tool_plan.get('reason')}\n{routing}"
     confidence = confidence_for_result(tool_names, tool_results, error=raw.get("error") or "")
     visual_payloads = visual_payloads_for_tools(tools)
+    evidence_summary = raw.get("evidence_summary")
+    if not isinstance(evidence_summary, list):
+        evidence_summary = summarize_tool_results(tool_results)
+    agent_trace = raw.get("agent_trace")
+    if not isinstance(agent_trace, dict):
+        tool_plan = raw.get("tool_plan") if isinstance(raw.get("tool_plan"), dict) else {}
+        agent_trace = {
+            "intent": tool_plan.get("answer_intent") or "diagnosis",
+            "planned_tools": tool_names,
+            "planning_reason": tool_plan.get("reason") or "",
+            "planning_used_llm": bool(tool_plan.get("used_llm")),
+            "model_status": "connected" if raw.get("used_llm") else "unavailable",
+            "evidence_summary": evidence_summary,
+        }
+    else:
+        agent_trace = {**agent_trace, "evidence_summary": agent_trace.get("evidence_summary") or evidence_summary}
 
     return {
         "answer": answer,
@@ -367,6 +564,8 @@ def normalize_agent_result(raw: dict[str, Any], context_summary: str = "") -> di
         "confidence": confidence,
         "context_summary": context_summary,
         "visual_payloads": visual_payloads,
+        "evidence_summary": evidence_summary,
+        "agent_trace": agent_trace,
     }
 
 
@@ -392,6 +591,15 @@ def ambiguous_followup_response(question: str, session_id: str, context_summary:
         "confidence": {"level": "低", "reason": "缺少明确分析对象和上一轮上下文，当前数据不足以判断。"},
         "context_summary": context_summary,
         "visual_payloads": [],
+        "evidence_summary": [],
+        "agent_trace": {
+            "intent": "clarification",
+            "planned_tools": [],
+            "planning_reason": "追问缺少可复用上下文，未调用数据工具。",
+            "planning_used_llm": False,
+            "model_status": "not_called",
+            "evidence_summary": [],
+        },
     }
 
 
@@ -406,12 +614,19 @@ def generate_session_report(detail: dict[str, Any]) -> str:
 
     rag_sources: list[str] = []
     tool_lines: list[str] = []
+    saved_tool_results: dict[str, Any] = {}
     for call in tool_calls:
         payload = loads_json(call["result_json"])
+        saved_tool_results[call["tool_name"]] = payload
         tool_lines.append(f"- `{call['tool_name']}`：{str(payload)[:240]}")
         if call["tool_name"] == "rag" and isinstance(payload, dict):
             for source in payload.get("sources") or []:
                 rag_sources.append(f"- {source.get('source')} / {source.get('heading')}")
+    evidence_lines = [
+        f"- {item.get('label')}：{item.get('value')}（来源：`{item.get('source')}`；{item.get('note') or '本地工具结果'}）"
+        for item in summarize_tool_results(saved_tool_results)
+    ]
+    tool_chain_lines = [f"- `{name}`" for name in tools]
 
     latest_answer = answers[-1] if answers else "当前会话尚无 Agent 回答。"
     semantic_note = ""
@@ -430,6 +645,12 @@ def generate_session_report(detail: dict[str, Any]) -> str:
             "",
             "## 关键结论",
             latest_answer,
+            "",
+            "## Agent 工具链路",
+            "\n".join(tool_chain_lines) if tool_chain_lines else "- 本会话未保存工具调用记录。",
+            "",
+            "## 关键证据摘要",
+            "\n".join(evidence_lines) if evidence_lines else "- 当前会话工具结果不足以抽取稳定证据摘要，请查看原始工具结果。",
             "",
             "## 数据依据",
             "\n".join(tool_lines) if tool_lines else "- 暂无结构化工具结果。",

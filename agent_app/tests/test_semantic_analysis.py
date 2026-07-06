@@ -125,4 +125,6 @@ def test_agent_reports_missing_semantic_file_without_breaking_v1(tmp_path: Path)
 
     assert result["used_llm"] is False
     assert "comment_semantic" in result["tool_names"]
-    assert "语义分析结果尚未生成" in result["answer"]
+    assert "当前模型不可用" in result["answer"]
+    assert result["tool_results"]["comment_semantic"]["status"] == "missing"
+    assert "语义分析结果尚未生成" in result["tool_results"]["comment_semantic"]["message"]
