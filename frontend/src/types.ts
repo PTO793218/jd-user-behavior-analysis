@@ -41,11 +41,36 @@ export type Confidence = {
 
 export type VisualPayload = {
   tool_name: string;
-  type: "bar" | "line" | "metric_cards" | "references";
+  type: "bar" | "line" | "metric_cards" | "references" | "table" | "matrix" | "plan";
   title: string;
   data: Array<Record<string, unknown>>;
   x_key?: string;
   y_key?: string;
+  columns?: Array<{ key: string; label: string }>;
+};
+
+export type EvidenceFact = {
+  label: string;
+  value: unknown;
+  source: string;
+  note?: string;
+};
+
+export type AgentTrace = {
+  intent: string;
+  planned_tools: string[];
+  planning_reason: string;
+  planning_used_llm: boolean;
+  model_status: string;
+  evidence_summary: EvidenceFact[];
+};
+
+export type ModelStatus = {
+  configured: boolean;
+  status: string;
+  model: string;
+  base_url: string;
+  provider: string;
 };
 
 export type SessionDetail = {
@@ -61,6 +86,7 @@ export type Overview = {
   rfm_users: number;
   semantic_sample_count: number;
   semantic_scope_note: string;
+  model_status?: ModelStatus;
   date_range?: string;
   charts?: {
     behavior_counts?: Array<Record<string, unknown>>;
@@ -82,6 +108,8 @@ export type ChatResponse = {
   confidence: Confidence;
   context_summary: string;
   visual_payloads: VisualPayload[];
+  evidence_summary: EvidenceFact[];
+  agent_trace: AgentTrace;
 };
 
 export type ReportResponse = {

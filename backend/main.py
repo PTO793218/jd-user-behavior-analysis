@@ -16,6 +16,7 @@ from .services import (
     get_overview_payload,
     get_semantic_summary_payload,
     is_followup_question,
+    model_status_payload,
     normalize_agent_result,
     rag_search,
     run_agent,
@@ -43,8 +44,8 @@ def create_app(
     )
 
     @app.get("/api/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
+    def health() -> dict:
+        return {"status": "ok", "model": model_status_payload()}
 
     @app.get("/api/overview")
     def overview() -> dict:
@@ -113,6 +114,8 @@ def create_app(
                 "confidence": normalized["confidence"],
                 "context_summary": normalized["context_summary"],
                 "visual_payloads": normalized["visual_payloads"],
+                "evidence_summary": normalized["evidence_summary"],
+                "agent_trace": normalized["agent_trace"],
             }
 
         context_for_agent = context
@@ -154,6 +157,8 @@ def create_app(
             "confidence": normalized["confidence"],
             "context_summary": normalized["context_summary"],
             "visual_payloads": normalized["visual_payloads"],
+            "evidence_summary": normalized["evidence_summary"],
+            "agent_trace": normalized["agent_trace"],
         }
 
     @app.post("/api/sessions/{session_id}/report")
